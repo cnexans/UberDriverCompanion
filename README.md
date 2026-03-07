@@ -2,6 +2,13 @@
 
 App Android que analiza en tiempo real los viajes ofrecidos en Uber Driver, mostrando metricas clave en un overlay flotante para ayudar al conductor a tomar mejores decisiones.
 
+## Estructura del repo
+
+```
+├── android/    # App Android (Kotlin)
+└── web/        # Landing page (Next.js)
+```
+
 ## Que hace
 
 Cuando Uber Driver muestra un viaje disponible, la app:
@@ -49,7 +56,7 @@ Uber Driver renderiza el popup de viaje usando SurfaceView/Canvas, lo cual hace 
 ### Arquitectura
 
 ```
-app/src/main/java/com/carlos/uberanalyzer/
+android/app/src/main/java/com/carlos/uberanalyzer/
 ├── MainActivity.kt                  # Pantalla principal, permisos, historial del dia
 ├── service/
 │   ├── UberAccessibilityService.kt  # Lee la pantalla de Uber via screenshots + OCR
@@ -91,18 +98,24 @@ app/src/main/java/com/carlos/uberanalyzer/
 
 ## Instalacion
 
-### Desde codigo fuente
+### App Android
 
 ```bash
-# Clonar
-git clone https://github.com/cnexans/UberDriverCompanion.git
-cd UberDriverCompanion
+cd android
 
 # Compilar (requiere JDK 17)
 ./gradlew assembleDebug
 
 # Instalar
 adb install app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Landing page
+
+```bash
+cd web
+npm install
+npm run dev
 ```
 
 ### Configuracion en el dispositivo
@@ -128,11 +141,17 @@ El overlay no interfiere con la app de Uber. Podes:
 
 ## Stack
 
+**Android:**
 - Kotlin
 - AccessibilityService + `takeScreenshot()` API
 - ML Kit Text Recognition (OCR on-device)
 - Room (base de datos local)
 - Coroutines
+
+**Web:**
+- Next.js 16
+- TypeScript
+- Tailwind CSS
 
 ## Limitaciones
 

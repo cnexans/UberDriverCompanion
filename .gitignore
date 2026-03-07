@@ -1,10 +1,10 @@
-# Built artifacts
-/build/
-/app/build/
+# Android built artifacts
+android/build/
+android/app/build/
 *.apk
 *.aab
 
-# Local config
+# Android local config
 local.properties
 
 # IDE
@@ -18,3 +18,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Node / Next.js
+node_modules/
+web/.next/
+web/out/
