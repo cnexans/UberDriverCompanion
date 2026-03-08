@@ -46,7 +46,7 @@ export default function Home() {
               </p>
               <div className="flex flex-wrap gap-4">
                 <a
-                  href="https://github.com/cnexans/UberDriverCompanion/releases"
+                  href="https://mpago.la/28aJMDu"
                   className="inline-flex items-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-400 text-black font-semibold rounded-lg transition-colors"
                 >
                   <svg
@@ -271,14 +271,15 @@ export default function Home() {
               <div>
                 <h3 className="font-semibold mb-1">Instala el APK</h3>
                 <p className="text-neutral-400 text-sm">
-                  Descarga desde{" "}
+                  Compra la app y recibiras el APK por mail. Tambien podes compilar desde el{" "}
                   <a
-                    href="https://github.com/cnexans/UberDriverCompanion/releases"
+                    href="https://github.com/cnexans/UberDriverCompanion"
                     className="text-green-400 hover:underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
-                    GitHub Releases
-                  </a>{" "}
-                  o compila desde el codigo fuente.
+                    codigo fuente
+                  </a>.
                 </p>
               </div>
             </div>
@@ -322,10 +323,10 @@ export default function Home() {
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <a
-              href="https://github.com/cnexans/UberDriverCompanion/releases"
+              href="https://mpago.la/28aJMDu"
               className="inline-flex items-center gap-2 px-8 py-4 bg-green-500 hover:bg-green-400 text-black font-semibold rounded-lg transition-colors text-lg"
             >
-              Descargar gratis
+              Descargar app
             </a>
             <a
               href="https://github.com/cnexans/UberDriverCompanion"
