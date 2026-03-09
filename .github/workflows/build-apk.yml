@@ -81,4 +81,4 @@ jobs:
           packageName: com.carlos.uberanalyzer
           releaseFiles: android/app/build/outputs/bundle/release/panauber-v${{ steps.version.outputs.VERSION_NAME }}.aab
           track: internal
-          status: completed
+          status: draft
