@@ -12,7 +12,7 @@ android {
         applicationId = "com.carlos.uberanalyzer"
         minSdk = 26
         targetSdk = 35
-        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 3
         versionName = (project.findProperty("versionName") as String?) ?: "1.0.0"
     }
 

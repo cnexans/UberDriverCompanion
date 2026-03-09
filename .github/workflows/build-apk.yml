@@ -1,4 +1,4 @@
-name: Build & Release APK
+name: Build & Release
 
 on:
   push:
@@ -37,10 +37,10 @@ jobs:
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/release.keystore
 
-      - name: Build signed release APK
+      - name: Build signed release APK & AAB
         working-directory: android
         run: |
-          ./gradlew assembleRelease \
+          ./gradlew assembleRelease bundleRelease \
             -PversionName=${{ steps.version.outputs.VERSION_NAME }} \
             -PversionCode=${{ steps.version.outputs.VERSION_CODE }} \
             -PKEYSTORE_FILE=../release.keystore \
@@ -48,18 +48,37 @@ jobs:
             -PKEY_ALIAS=${{ secrets.KEY_ALIAS }} \
             -PKEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
 
-      - name: Rename APK
+      - name: Rename artifacts
         run: |
           mv android/app/build/outputs/apk/release/app-release.apk \
              android/app/build/outputs/apk/release/panauber-v${{ steps.version.outputs.VERSION_NAME }}.apk
+          mv android/app/build/outputs/bundle/release/app-release.aab \
+             android/app/build/outputs/bundle/release/panauber-v${{ steps.version.outputs.VERSION_NAME }}.aab
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: panauber-v${{ steps.version.outputs.VERSION_NAME }}
+          name: panauber-apk-v${{ steps.version.outputs.VERSION_NAME }}
           path: android/app/build/outputs/apk/release/panauber-v${{ steps.version.outputs.VERSION_NAME }}.apk
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: panauber-aab-v${{ steps.version.outputs.VERSION_NAME }}
+          path: android/app/build/outputs/bundle/release/panauber-v${{ steps.version.outputs.VERSION_NAME }}.aab
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: android/app/build/outputs/apk/release/panauber-v${{ steps.version.outputs.VERSION_NAME }}.apk
+          files: |
+            android/app/build/outputs/apk/release/panauber-v${{ steps.version.outputs.VERSION_NAME }}.apk
+            android/app/build/outputs/bundle/release/panauber-v${{ steps.version.outputs.VERSION_NAME }}.aab
+
+      - name: Upload AAB to Google Play (Internal Testing)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.carlos.uberanalyzer
+          releaseFiles: android/app/build/outputs/bundle/release/panauber-v${{ steps.version.outputs.VERSION_NAME }}.aab
+          track: internal
+          status: completed
