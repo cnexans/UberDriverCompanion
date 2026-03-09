@@ -84,10 +84,41 @@ jobs:
           status: draft
 
       - name: Promote to Closed Testing (alpha)
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: com.carlos.uberanalyzer
-          track: internal
-          trackPromoteTo: alpha
-          status: draft
+        run: |
+          echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}' > /tmp/sa.json
+          pip install google-auth google-api-python-client -q
+          python3 - <<'PYEOF'
+          import json
+          from google.oauth2 import service_account
+          from googleapiclient.discovery import build
+
+          creds = service_account.Credentials.from_service_account_file(
+              '/tmp/sa.json',
+              scopes=['https://www.googleapis.com/auth/androidpublisher']
+          )
+          service = build('androidpublisher', 'v3', credentials=creds)
+          pkg = 'com.carlos.uberanalyzer'
+
+          edit = service.edits().insert(body={}, packageName=pkg).execute()
+          edit_id = edit['id']
+
+          # Get the latest internal release
+          internal = service.edits().tracks().get(
+              packageName=pkg, editId=edit_id, track='internal'
+          ).execute()
+
+          releases = internal.get('releases', [])
+          if releases:
+              latest = releases[0]
+              version_codes = latest.get('versionCodes', [])
+              # Set same version codes on alpha track
+              service.edits().tracks().update(
+                  packageName=pkg, editId=edit_id, track='alpha',
+                  body={'track': 'alpha', 'releases': [{'versionCodes': version_codes, 'status': 'draft'}]}
+              ).execute()
+              service.edits().commit(packageName=pkg, editId=edit_id).execute()
+              print(f'Promoted version codes {version_codes} from internal to alpha')
+          else:
+              print('No internal releases found')
+          PYEOF
+          rm -f /tmp/sa.json
