@@ -116,7 +116,13 @@ jobs:
                   packageName=pkg, editId=edit_id, track='alpha',
                   body={'track': 'alpha', 'releases': [{'versionCodes': version_codes, 'status': 'draft', 'name': f'v{version_codes[0]}'}]}
               ).execute()
-              service.edits().commit(packageName=pkg, editId=edit_id, changesNotSentForReview=True).execute()
+              # Also ensure any existing alpha releases are set to draft
+              alpha_track = service.edits().tracks().get(
+                  packageName=pkg, editId=edit_id, track='alpha'
+              ).execute()
+              print(f'Alpha track before update: {json.dumps(alpha_track, indent=2)}')
+
+              service.edits().commit(packageName=pkg, editId=edit_id).execute()
               print(f'Promoted version codes {version_codes} from internal to alpha')
           else:
               print('No internal releases found')
