@@ -360,6 +360,12 @@ export default function Home() {
               Terminos
             </a>
             <a
+              href="/data-deletion"
+              className="hover:text-neutral-300 transition-colors"
+            >
+              Eliminacion de datos
+            </a>
+            <a
               href="https://github.com/cnexans/UberDriverCompanion"
               className="hover:text-neutral-300 transition-colors"
             >
