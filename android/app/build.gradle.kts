@@ -64,4 +64,7 @@ dependencies {
 
     // ML Kit Text Recognition (on-device OCR)
     implementation("com.google.mlkit:text-recognition:16.0.1")
+
+    // PostHog Analytics
+    implementation("com.posthog:posthog-android:3.+")
 }
