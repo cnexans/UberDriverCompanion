@@ -346,12 +346,26 @@ export default function Home() {
           <span>
             UberDriverCompanion — Proyecto open source. No afiliado con Uber.
           </span>
-          <a
-            href="https://github.com/cnexans/UberDriverCompanion"
-            className="hover:text-neutral-300 transition-colors"
-          >
-            GitHub
-          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href="/privacy"
+              className="hover:text-neutral-300 transition-colors"
+            >
+              Privacidad
+            </a>
+            <a
+              href="/terms"
+              className="hover:text-neutral-300 transition-colors"
+            >
+              Terminos
+            </a>
+            <a
+              href="https://github.com/cnexans/UberDriverCompanion"
+              className="hover:text-neutral-300 transition-colors"
+            >
+              GitHub
+            </a>
+          </div>
         </div>
       </footer>
     </div>
