@@ -10,18 +10,53 @@ import android.view.View
 import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import com.carlos.uberanalyzer.billing.BillingManager
 import com.carlos.uberanalyzer.model.ThresholdPrefs
 import com.carlos.uberanalyzer.service.OverlayService
 import com.carlos.uberanalyzer.service.UberAccessibilityService
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdView
 import com.google.android.material.button.MaterialButton
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
     private var overlayVisible = false
+    private lateinit var billingManager: BillingManager
+    private var adView: AdView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // Ads & billing only when SHOW_ADS is enabled (production builds)
+        adView = findViewById(R.id.adView)
+        billingManager = BillingManager(this)
+
+        if (BuildConfig.SHOW_ADS) {
+            billingManager.startConnection()
+
+            lifecycleScope.launch {
+                billingManager.isAdFree.collect { adFree ->
+                    updateAdVisibility(adFree)
+                }
+            }
+
+            findViewById<MaterialButton>(R.id.btnRemoveAds).setOnClickListener {
+                billingManager.launchPurchase(this)
+            }
+
+            if (!billingManager.isAdFree.value) {
+                adView?.loadAd(AdRequest.Builder().build())
+                adView?.visibility = View.VISIBLE
+                findViewById<MaterialButton>(R.id.btnRemoveAds).visibility = View.VISIBLE
+            }
+        } else {
+            // Testing builds: no ads, no billing
+            adView?.visibility = View.GONE
+            findViewById<MaterialButton>(R.id.btnRemoveAds).visibility = View.GONE
+        }
 
         // Permission buttons
         findViewById<MaterialButton>(R.id.btnAccessibility).setOnClickListener {
@@ -84,13 +119,38 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    private fun updateAdVisibility(adFree: Boolean) {
+        if (adFree) {
+            adView?.visibility = View.GONE
+            adView?.destroy()
+            findViewById<MaterialButton>(R.id.btnRemoveAds).visibility = View.GONE
+        } else {
+            adView?.visibility = View.VISIBLE
+            findViewById<MaterialButton>(R.id.btnRemoveAds).visibility = View.VISIBLE
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         updateStatus()
+        if (BuildConfig.SHOW_ADS) adView?.resume()
 
         overlayVisible = OverlayService.isRunning()
         findViewById<MaterialButton>(R.id.btnToggleOverlay).text =
             if (overlayVisible) "Ocultar Overlay" else "Mostrar Overlay"
+    }
+
+    override fun onPause() {
+        if (BuildConfig.SHOW_ADS) adView?.pause()
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        if (BuildConfig.SHOW_ADS) {
+            adView?.destroy()
+            billingManager.destroy()
+        }
+        super.onDestroy()
     }
 
     private fun updateStatus() {

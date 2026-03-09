@@ -14,6 +14,14 @@ android {
         targetSdk = 35
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 3
         versionName = (project.findProperty("versionName") as String?) ?: "1.0.0"
+
+        // Ads disabled by default (testing). Set -PSHOW_ADS=true for production builds.
+        buildConfigField("boolean", "SHOW_ADS",
+            (project.findProperty("SHOW_ADS") as String?) ?: "false")
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     signingConfigs {
@@ -67,4 +75,10 @@ dependencies {
 
     // PostHog Analytics
     implementation("com.posthog:posthog-android:3.+")
+
+    // AdMob
+    implementation("com.google.android.gms:play-services-ads:23.6.0")
+
+    // Google Play Billing
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
 }

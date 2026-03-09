@@ -1,6 +1,7 @@
 package com.carlos.uberanalyzer
 
 import android.app.Application
+import com.google.android.gms.ads.MobileAds
 import com.posthog.android.PostHogAndroid
 import com.posthog.android.PostHogAndroidConfig
 
@@ -20,5 +21,7 @@ class UberAnalyzerApp : Application() {
         )
 
         PostHogAndroid.setup(this, config)
+
+        MobileAds.initialize(this)
     }
 }
