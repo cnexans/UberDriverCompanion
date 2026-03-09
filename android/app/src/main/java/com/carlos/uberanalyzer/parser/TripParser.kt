@@ -96,13 +96,13 @@ object TripParser {
             texts[tripIndex + 1]
         } else null
 
-        // If we have no price and no trip/pickup info, this is not a valid trip
-        if (price == null && !hasPickup && !hasTrip) return null
+        // Must have a valid price > 0 to be a real trip offer
+        if (price == null || price <= 0.0) return null
 
         return TripData(
             type = mainType,
             subtype = subtype,
-            price = price ?: 0.0,
+            price = price,
             bonus = bonus,
             pickupMinutes = pickupMinutes,
             pickupKm = pickupKm,
