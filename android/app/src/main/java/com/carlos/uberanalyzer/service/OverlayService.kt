@@ -34,6 +34,10 @@ class OverlayService : Service() {
 
         fun isRunning(): Boolean = instance != null
 
+        fun showWaiting() {
+            instance?.showWaitingState()
+        }
+
         fun hide() {
             instance?.let { svc ->
                 svc.layoutParams?.let { params ->
@@ -141,12 +145,48 @@ class OverlayService : Service() {
         windowManager?.addView(overlayView, params)
     }
 
+    private fun showWaitingState() {
+        overlayView?.let { view ->
+            view.findViewById<TextView>(R.id.tvPrice)?.text = "Esperando viaje..."
+            view.findViewById<TextView>(R.id.tvPrice)?.setTextColor(Color.parseColor("#888888"))
+            view.findViewById<TextView>(R.id.tvType)?.text = ""
+            view.findViewById<TextView>(R.id.tvPorKm)?.apply {
+                text = ""
+                visibility = View.GONE
+            }
+            view.findViewById<TextView>(R.id.tvPorHora)?.apply {
+                text = ""
+                visibility = View.GONE
+            }
+            view.findViewById<TextView>(R.id.tvRatio)?.apply {
+                text = ""
+                visibility = View.GONE
+            }
+            view.findViewById<TextView>(R.id.tvPickup)?.apply {
+                text = ""
+                visibility = View.GONE
+            }
+            view.findViewById<TextView>(R.id.tvTrip)?.apply {
+                text = ""
+                visibility = View.GONE
+            }
+        }
+    }
+
     private fun showTrip(trip: TripData) {
         if (overlayView == null && Settings.canDrawOverlays(this)) {
             createOverlay()
         }
         overlayView?.let { view ->
-            view.findViewById<TextView>(R.id.tvPrice)?.text = "$ ${formatNumber(trip.price)}"
+            // Restore visibility of all fields
+            listOf(R.id.tvPorKm, R.id.tvPorHora, R.id.tvRatio, R.id.tvPickup, R.id.tvTrip).forEach { id ->
+                view.findViewById<TextView>(id)?.visibility = View.VISIBLE
+            }
+
+            view.findViewById<TextView>(R.id.tvPrice)?.apply {
+                text = "$ ${formatNumber(trip.price)}"
+                setTextColor(Color.WHITE)
+            }
 
             val kmGreen = ThresholdPrefs.getKmGreen(this)
             val kmYellow = ThresholdPrefs.getKmYellow(this)

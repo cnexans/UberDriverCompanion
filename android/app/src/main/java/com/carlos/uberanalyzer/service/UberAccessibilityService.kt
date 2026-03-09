@@ -3,6 +3,10 @@ package com.carlos.uberanalyzer.service
 import android.accessibilityservice.AccessibilityService
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -30,16 +34,24 @@ class UberAccessibilityService : AccessibilityService() {
     private val handler = Handler(Looper.getMainLooper())
     private var pendingRetries = 0
     private var lastScreenshotTime = 0L
-    private var lastNormalTextCount = 15 // Assume normal until proven otherwise
+    private var lastNormalTextCount = 15
     private var lastTripSaveTime = 0L
     private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.Builder().build())
 
+    // Track if we're currently showing a trip (for waiting state)
+    private var isTripActive = false
+    private var tripPopupGoneTime = 0L
+
     companion object {
         private const val TAG = "UberAnalyzer"
-        private const val DEBOUNCE_MS = 250L
-        private const val RETRY_DELAY_MS = 150L
-        private const val MAX_RETRIES = 3
-        private const val SCREENSHOT_COOLDOWN_MS = 100L
+        private const val DEBOUNCE_MS = 100L           // Reduced from 250ms
+        private const val RETRY_DELAY_MS = 80L          // Reduced from 150ms
+        private const val MAX_RETRIES = 2               // Reduced from 3
+        private const val SCREENSHOT_COOLDOWN_MS = 50L  // Reduced from 100ms
+        private const val TRIP_GONE_TIMEOUT_MS = 3000L  // Reset to waiting after 3s
+        // ROI: crop bottom portion of screen where trip card appears
+        private const val ROI_TOP_RATIO = 0.45f         // Start at 45% from top
+        private const val ROI_SCALE_FACTOR = 0.6f       // Scale down to 60% for faster OCR
         var isServiceRunning = false
             private set
     }
@@ -64,13 +76,12 @@ class UberAccessibilityService : AccessibilityService() {
 
         val pkg = event.packageName?.toString() ?: ""
         if (pkg == "com.ubercab.driver" || pkg == "com.ubercab") {
-            // Get text from event
+            // Collect text from event
             event.text?.forEach { cs ->
                 cs?.toString()?.takeIf { it.isNotBlank() }?.let { eventTexts.add(it) }
             }
             event.contentDescription?.toString()?.takeIf { it.isNotBlank() }?.let { eventTexts.add(it) }
 
-            // Traverse the source node subtree
             val source = event.source
             if (source != null) {
                 source.refresh()
@@ -142,7 +153,7 @@ class UberAccessibilityService : AccessibilityService() {
             debugInfo.append("WIN_ERR ")
         }
 
-        // Merge event-collected texts (may have trip popup content)
+        // Merge event-collected texts
         if (eventTexts.isNotEmpty()) {
             val newFromEvents = eventTexts.filter { et -> texts.none { it == et } }
             if (newFromEvents.isNotEmpty()) {
@@ -160,14 +171,26 @@ class UberAccessibilityService : AccessibilityService() {
         // Detect trip popup: Uber is foreground, had normal text count before, now dropped
         val isTripPopup = isUberForeground && rootTextCount <= 5 && lastNormalTextCount >= 10
 
-        // When trip popup detected, take screenshot for OCR
+        // Handle trip popup detection and waiting state
         if (isTripPopup) {
             debugInfo.append("POPUP! ")
+            tripPopupGoneTime = 0L // Reset gone timer while popup is active
             val now = System.currentTimeMillis()
             if (now - lastScreenshotTime > SCREENSHOT_COOLDOWN_MS) {
                 lastScreenshotTime = now
                 debugInfo.append("SCR! ")
                 takeScreenshotForOCR(texts.toList())
+            }
+        } else if (isUberForeground && isTripActive && rootTextCount >= 10) {
+            // Trip popup gone, start countdown to "waiting" state
+            val now = System.currentTimeMillis()
+            if (tripPopupGoneTime == 0L) {
+                tripPopupGoneTime = now
+            } else if (now - tripPopupGoneTime > TRIP_GONE_TIMEOUT_MS) {
+                // Trip is gone for 3s, show waiting state
+                isTripActive = false
+                lastTripKey = null
+                OverlayService.showWaiting()
             }
         }
 
@@ -177,8 +200,6 @@ class UberAccessibilityService : AccessibilityService() {
                 val rootNode = rootInActiveWindow
                 if (rootNode != null) {
                     val tripTexts = mutableListOf<String>()
-
-                    // Search for trip terms + price patterns
                     val searchTerms = listOf(
                         "Viaje:", "Aceptar", "incluido", "Moto", "Exclusivo",
                         "Artículo", "verificad", "min (", "CABA",
@@ -216,7 +237,7 @@ class UberAccessibilityService : AccessibilityService() {
             }
         }
 
-        // Log - only log when we have content or on retries
+        // Log
         try {
             val file = java.io.File(filesDir, "uber_texts.log")
             val ts = java.text.SimpleDateFormat("HH:mm:ss.SSS").format(java.util.Date())
@@ -230,7 +251,7 @@ class UberAccessibilityService : AccessibilityService() {
             }
         } catch (_: Exception) {}
 
-        // If Uber is active but got 0 texts, retry after a delay
+        // Retry logic
         if (texts.isEmpty() && isUberActive && pendingRetries < MAX_RETRIES) {
             pendingRetries++
             handler.postDelayed({ scanAndProcess("RETRY$pendingRetries") }, RETRY_DELAY_MS)
@@ -239,7 +260,7 @@ class UberAccessibilityService : AccessibilityService() {
 
         if (texts.isEmpty()) return
 
-        // Filter out our own overlay texts before parsing
+        // Filter out overlay texts
         val overlayFilters = listOf("UBER ANALYZER", "UBER", "$/km:", "$/h:", "Dist cobrada:", "Ratio:", "Recogida:", "Esperando viaje")
         val cleanTexts = texts.filter { text -> overlayFilters.none { text.contains(it) } }
 
@@ -247,15 +268,18 @@ class UberAccessibilityService : AccessibilityService() {
         if (hasPickupOrTrip) {
             Log.d(TAG, "TRIP_CANDIDATE ($source) [${cleanTexts.size}]: $cleanTexts")
         } else {
-            return // No trip data in accessibility tree, rely on OCR
+            return
         }
 
+        // Parse and show IMMEDIATELY from accessibility tree (no waiting for OCR)
         val trip = TripParser.parse(cleanTexts) ?: return
 
         Log.d(TAG, "TRIP_PARSED: ${trip.type} $${trip.price} $/km=${trip.pesosPorKm}")
 
         if (trip.tripKey == lastTripKey) return
         lastTripKey = trip.tripKey
+        isTripActive = true
+        tripPopupGoneTime = 0L
 
         showTripOnOverlay(trip)
 
@@ -295,42 +319,62 @@ class UberAccessibilityService : AccessibilityService() {
         }
     }
 
+    /**
+     * Optimized screenshot-to-OCR pipeline:
+     * 1. Crop to ROI (bottom 55% where trip card is)
+     * 2. Convert to high-contrast grayscale
+     * 3. Scale down for faster processing
+     * 4. Run ML Kit on smaller, optimized image
+     */
     private fun takeScreenshotForOCR(existingTexts: List<String>) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            Log.e(TAG, "takeScreenshot requires API 30+, current: ${Build.VERSION.SDK_INT}")
-            return
-        }
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
 
-        Log.d(TAG, "Taking screenshot for OCR...")
+        val startTime = System.currentTimeMillis()
+        Log.d(TAG, "Taking optimized screenshot for OCR...")
+
         try {
             takeScreenshot(Display.DEFAULT_DISPLAY,
                 mainExecutor,
                 object : TakeScreenshotCallback {
                     override fun onSuccess(result: ScreenshotResult) {
-                        Log.d(TAG, "Screenshot success!")
                         try {
                             val bitmap = Bitmap.wrapHardwareBuffer(
                                 result.hardwareBuffer, result.colorSpace
                             )
                             if (bitmap != null) {
-                                // Convert to software bitmap for ML Kit
+                                // Step 1: Convert to software bitmap
                                 val swBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, false)
                                 bitmap.recycle()
                                 result.hardwareBuffer.close()
 
                                 if (swBitmap != null) {
-                                    val image = InputImage.fromBitmap(swBitmap, 0)
+                                    // Step 2: Crop ROI (bottom portion where trip card is)
+                                    val roiBitmap = cropROI(swBitmap)
+                                    swBitmap.recycle()
+
+                                    // Step 3: Convert to grayscale with high contrast + scale down
+                                    val optimizedBitmap = optimizeBitmapForOCR(roiBitmap)
+                                    roiBitmap.recycle()
+
+                                    val prepTime = System.currentTimeMillis() - startTime
+                                    Log.d(TAG, "OCR prep: ${prepTime}ms, size: ${optimizedBitmap.width}x${optimizedBitmap.height}")
+
+                                    // Step 4: Run ML Kit on optimized image
+                                    val image = InputImage.fromBitmap(optimizedBitmap, 0)
                                     textRecognizer.process(image)
                                         .addOnSuccessListener { visionText ->
+                                            val ocrTime = System.currentTimeMillis() - startTime
                                             val ocrTexts = mutableListOf<String>()
                                             for (block in visionText.textBlocks) {
                                                 for (line in block.lines) {
                                                     ocrTexts.add(line.text)
                                                 }
                                             }
-                                            swBitmap.recycle()
+                                            optimizedBitmap.recycle()
 
-                                            // Filter out our own overlay text
+                                            Log.d(TAG, "OCR total: ${ocrTime}ms, texts: ${ocrTexts.size}")
+
+                                            // Filter out overlay text
                                             val overlayPatterns = listOf(
                                                 "UBER ANALYZER", "$/km:", "$/min:", "$/h:", "Dist cobrada:", "Ratio:",
                                                 "Recogida:", "Esperando viaje"
@@ -339,30 +383,29 @@ class UberAccessibilityService : AccessibilityService() {
                                                 overlayPatterns.none { text.contains(it) }
                                             }
 
-                                            // Log OCR results
+                                            // Log OCR results with timing
                                             try {
                                                 val file = java.io.File(filesDir, "uber_texts.log")
                                                 val ts = java.text.SimpleDateFormat("HH:mm:ss.SSS").format(java.util.Date())
-                                                file.appendText("$ts OCR[${filteredTexts.size}]: $filteredTexts\n")
+                                                file.appendText("$ts OCR[${filteredTexts.size}] ${ocrTime}ms: $filteredTexts\n")
                                             } catch (_: Exception) {}
 
-                                            Log.d(TAG, "OCR[${filteredTexts.size}]: $filteredTexts")
-
-                                            // Combine filtered OCR texts with existing texts and parse
+                                            // Combine with existing texts and parse
                                             val allTexts = existingTexts.toMutableList()
                                             filteredTexts.forEach { ot ->
                                                 if (allTexts.none { it == ot }) allTexts.add(ot)
                                             }
 
                                             val trip = TripParser.parse(allTexts) ?: return@addOnSuccessListener
-                                            Log.d(TAG, "OCR_TRIP: ${trip.type} $${trip.price} $/km=${trip.pesosPorKm}")
+                                            Log.d(TAG, "OCR_TRIP: ${trip.type} $${trip.price} $/km=${trip.pesosPorKm} (${ocrTime}ms)")
 
                                             if (trip.tripKey == lastTripKey) return@addOnSuccessListener
                                             lastTripKey = trip.tripKey
+                                            isTripActive = true
+                                            tripPopupGoneTime = 0L
 
                                             showTripOnOverlay(trip)
 
-                                            // Time-based dedup: don't save to DB within 30s
                                             val saveNow = System.currentTimeMillis()
                                             if (saveNow - lastTripSaveTime < 30_000) return@addOnSuccessListener
                                             lastTripSaveTime = saveNow
@@ -394,6 +437,7 @@ class UberAccessibilityService : AccessibilityService() {
                                             sendBroadcast(Intent("com.carlos.uberanalyzer.TRIP_UPDATE"))
                                         }
                                         .addOnFailureListener { e ->
+                                            optimizedBitmap.recycle()
                                             Log.e(TAG, "OCR failed: ${e.message}")
                                         }
                                 }
@@ -420,30 +464,46 @@ class UberAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun dumpHierarchy(node: AccessibilityNodeInfo, sb: StringBuilder, depth: Int) {
-        val indent = "  ".repeat(depth)
-        val cls = node.className?.toString()?.substringAfterLast('.') ?: "?"
-        val text = node.text?.toString()?.take(80) ?: ""
-        val desc = node.contentDescription?.toString()?.take(80) ?: ""
-        val viewId = node.viewIdResourceName ?: ""
-        val bounds = android.graphics.Rect()
-        node.getBoundsInScreen(bounds)
-        sb.append("$indent$cls")
-        if (viewId.isNotEmpty()) sb.append(" id=$viewId")
-        if (text.isNotEmpty()) sb.append(" txt=\"$text\"")
-        if (desc.isNotEmpty()) sb.append(" desc=\"$desc\"")
-        sb.append(" [${bounds.left},${bounds.top}-${bounds.right},${bounds.bottom}]")
-        sb.append(" vis=${node.isVisibleToUser} en=${node.isEnabled}")
-        sb.append("\n")
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i)
-            if (child != null) {
-                dumpHierarchy(child, sb, depth + 1)
-                child.recycle()
-            } else {
-                sb.append("$indent  NULL_CHILD[$i]\n")
-            }
-        }
+    /**
+     * Crop to ROI: bottom portion of screen where trip card appears.
+     * The Uber trip card is always in the bottom ~55% of the screen.
+     */
+    private fun cropROI(bitmap: Bitmap): Bitmap {
+        val startY = (bitmap.height * ROI_TOP_RATIO).toInt()
+        val height = bitmap.height - startY
+        return Bitmap.createBitmap(bitmap, 0, startY, bitmap.width, height)
+    }
+
+    /**
+     * Optimize bitmap for OCR:
+     * 1. Scale down to reduce pixel count (faster processing)
+     * 2. Convert to high-contrast grayscale (better text recognition)
+     */
+    private fun optimizeBitmapForOCR(bitmap: Bitmap): Bitmap {
+        val scaledWidth = (bitmap.width * ROI_SCALE_FACTOR).toInt()
+        val scaledHeight = (bitmap.height * ROI_SCALE_FACTOR).toInt()
+
+        val scaledBitmap = Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true)
+
+        // Apply high-contrast grayscale filter
+        val grayscaleBitmap = Bitmap.createBitmap(scaledWidth, scaledHeight, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(grayscaleBitmap)
+        val paint = Paint()
+
+        // High contrast grayscale: boost contrast by 1.5x with brightness offset
+        val contrast = 1.5f
+        val offset = (-(128f * contrast) + 128f)
+        val matrix = ColorMatrix(floatArrayOf(
+            0.299f * contrast, 0.587f * contrast, 0.114f * contrast, 0f, offset,
+            0.299f * contrast, 0.587f * contrast, 0.114f * contrast, 0f, offset,
+            0.299f * contrast, 0.587f * contrast, 0.114f * contrast, 0f, offset,
+            0f, 0f, 0f, 1f, 0f
+        ))
+        paint.colorFilter = ColorMatrixColorFilter(matrix)
+        canvas.drawBitmap(scaledBitmap, 0f, 0f, paint)
+        scaledBitmap.recycle()
+
+        return grayscaleBitmap
     }
 
     private fun extractTexts(node: AccessibilityNodeInfo, texts: MutableList<String>) {
