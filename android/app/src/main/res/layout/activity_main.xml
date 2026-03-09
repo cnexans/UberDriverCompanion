@@ -1,164 +1,114 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="#121212">
 
-    <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp"
-        android:background="#1B1B1B">
+        android:orientation="vertical">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Uber Analyzer"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="#4CAF50" />
-
-        <!-- Status -->
-        <TextView
-            android:id="@+id/tvStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Servicio: Inactivo"
-            android:textColor="#FF5252"
-            android:textSize="14sp"
-            android:paddingTop="4dp" />
-
-        <!-- Buttons -->
+        <!-- Header -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingTop="12dp">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAccessibility"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Accesibilidad"
-                android:textSize="12sp"
-                android:layout_marginEnd="4dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnOverlay"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Permiso Overlay"
-                android:textSize="12sp"
-                android:layout_marginStart="4dp" />
-
-        </LinearLayout>
-
-    </LinearLayout>
-
-    <!-- Day Stats -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:background="#1E1E1E">
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="center">
-
-            <TextView
-                android:id="@+id/tvStatsCount"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textSize="24sp"
-                android:textStyle="bold"
-                android:textColor="#FFFFFF" />
+            android:padding="16dp"
+            android:background="#1B1B1B">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Viajes"
-                android:textColor="#888888"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
-
-            <TextView
-                android:id="@+id/tvStatsEarnings"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="$ 0"
+                android:text="Uber Analyzer"
                 android:textSize="24sp"
                 android:textStyle="bold"
                 android:textColor="#4CAF50" />
 
             <TextView
+                android:id="@+id/tvStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Total"
-                android:textColor="#888888"
-                android:textSize="12sp" />
+                android:text="Servicio: Inactivo"
+                android:textColor="#FF5252"
+                android:textSize="14sp"
+                android:paddingTop="4dp" />
+
+            <!-- Permission buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="12dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAccessibility"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Accesibilidad"
+                    android:textSize="12sp"
+                    android:layout_marginEnd="4dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnOverlay"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Permiso Overlay"
+                    android:textSize="12sp"
+                    android:layout_marginStart="4dp" />
+
+            </LinearLayout>
+
+            <!-- Show/Hide overlay toggle -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleOverlay"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Mostrar Overlay"
+                android:textSize="14sp"
+                android:layout_marginTop="8dp" />
+
         </LinearLayout>
 
+        <!-- Thresholds -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="center">
+            android:padding="16dp">
 
             <TextView
-                android:id="@+id/tvStatsAvgKm"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="$ 0/km"
+                android:text="Umbrales de color"
+                android:textColor="#FFFFFF"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="#FFFFFF" />
+                android:paddingBottom="4dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Prom $/km"
+                android:text="Define cuando un viaje se muestra verde, amarillo o rojo."
                 android:textColor="#888888"
-                android:textSize="12sp" />
+                android:textSize="12sp"
+                android:paddingBottom="16dp" />
+
+            <!-- $/km thresholds -->
+            <include layout="@layout/threshold_row"
+                android:id="@+id/thresholdKm" />
+
+            <!-- $/hora thresholds -->
+            <include layout="@layout/threshold_row"
+                android:id="@+id/thresholdHora" />
+
+            <!-- % dist thresholds -->
+            <include layout="@layout/threshold_row"
+                android:id="@+id/thresholdPct" />
+
         </LinearLayout>
 
     </LinearLayout>
-
-    <!-- History label -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Historial"
-        android:textColor="#AAAAAA"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:paddingStart="16dp"
-        android:paddingTop="12dp"
-        android:paddingBottom="4dp" />
-
-    <!-- Trip history -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerHistory"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-
-</LinearLayout>
+</ScrollView>

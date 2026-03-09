@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="#1E1E1E"
+    android:padding="12dp"
+    android:layout_marginBottom="8dp">
+
+    <TextView
+        android:id="@+id/tvThresholdLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Metrica"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:paddingBottom="8dp" />
+
+    <!-- Green threshold -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="4dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🟢 Verde ≥"
+            android:textColor="#4CAF50"
+            android:textSize="13sp"
+            android:minWidth="90dp" />
+
+        <EditText
+            android:id="@+id/etGreen"
+            android:layout_width="80dp"
+            android:layout_height="40dp"
+            android:inputType="number"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:background="#2A2A2A"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:gravity="center"
+            android:singleLine="true" />
+    </LinearLayout>
+
+    <!-- Yellow threshold -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🟡 Amarillo ≥"
+            android:textColor="#FFC107"
+            android:textSize="13sp"
+            android:minWidth="90dp" />
+
+        <EditText
+            android:id="@+id/etYellow"
+            android:layout_width="80dp"
+            android:layout_height="40dp"
+            android:inputType="number"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:background="#2A2A2A"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:gravity="center"
+            android:singleLine="true" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="  (menor = rojo)"
+            android:textColor="#666666"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+</LinearLayout>

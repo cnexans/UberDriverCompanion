@@ -1,47 +1,29 @@
 package com.carlos.uberanalyzer
 
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.View
+import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import com.carlos.uberanalyzer.db.TripDatabase
+import com.carlos.uberanalyzer.model.ThresholdPrefs
 import com.carlos.uberanalyzer.service.OverlayService
 import com.carlos.uberanalyzer.service.UberAccessibilityService
-import com.carlos.uberanalyzer.ui.HistoryAdapter
 import com.google.android.material.button.MaterialButton
-import kotlinx.coroutines.launch
-import java.util.Calendar
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var adapter: HistoryAdapter
-    private val db by lazy { TripDatabase.getInstance(this) }
-
-    private val tripReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            refreshData()
-        }
-    }
+    private var overlayVisible = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        adapter = HistoryAdapter()
-        findViewById<RecyclerView>(R.id.recyclerHistory).apply {
-            layoutManager = LinearLayoutManager(this@MainActivity)
-            adapter = this@MainActivity.adapter
-        }
-
+        // Permission buttons
         findViewById<MaterialButton>(R.id.btnAccessibility).setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
@@ -56,24 +38,59 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
+
+        // Overlay toggle
+        val btnToggle = findViewById<MaterialButton>(R.id.btnToggleOverlay)
+        btnToggle.setOnClickListener {
+            if (!Settings.canDrawOverlays(this)) return@setOnClickListener
+
+            if (overlayVisible) {
+                stopService(Intent(this, OverlayService::class.java))
+                overlayVisible = false
+                btnToggle.text = "Mostrar Overlay"
+            } else {
+                startService(Intent(this, OverlayService::class.java))
+                overlayVisible = true
+                btnToggle.text = "Ocultar Overlay"
+            }
+        }
+
+        // Setup threshold rows
+        setupThreshold(
+            findViewById(R.id.thresholdKm),
+            "$/km",
+            ThresholdPrefs.getKmGreen(this),
+            ThresholdPrefs.getKmYellow(this),
+            { ThresholdPrefs.setKmGreen(this, it) },
+            { ThresholdPrefs.setKmYellow(this, it) }
+        )
+
+        setupThreshold(
+            findViewById(R.id.thresholdHora),
+            "$/hora",
+            ThresholdPrefs.getHoraGreen(this),
+            ThresholdPrefs.getHoraYellow(this),
+            { ThresholdPrefs.setHoraGreen(this, it) },
+            { ThresholdPrefs.setHoraYellow(this, it) }
+        )
+
+        setupThreshold(
+            findViewById(R.id.thresholdPct),
+            "% dist. cobrada",
+            ThresholdPrefs.getPctGreen(this),
+            ThresholdPrefs.getPctYellow(this),
+            { ThresholdPrefs.setPctGreen(this, it) },
+            { ThresholdPrefs.setPctYellow(this, it) }
+        )
     }
 
     override fun onResume() {
         super.onResume()
         updateStatus()
-        refreshData()
-        registerReceiver(tripReceiver, IntentFilter("com.carlos.uberanalyzer.TRIP_UPDATE"),
-            RECEIVER_NOT_EXPORTED)
 
-        // Start overlay service if both permissions are granted
-        if (Settings.canDrawOverlays(this) && !OverlayService.isRunning()) {
-            startService(Intent(this, OverlayService::class.java))
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        unregisterReceiver(tripReceiver)
+        overlayVisible = OverlayService.isRunning()
+        findViewById<MaterialButton>(R.id.btnToggleOverlay).text =
+            if (overlayVisible) "Ocultar Overlay" else "Mostrar Overlay"
     }
 
     private fun updateStatus() {
@@ -92,24 +109,36 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun refreshData() {
-        lifecycleScope.launch {
-            val startOfDay = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, 0)
-                set(Calendar.MINUTE, 0)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }.timeInMillis
+    private fun setupThreshold(
+        row: View,
+        label: String,
+        greenVal: Int,
+        yellowVal: Int,
+        saveGreen: (Int) -> Unit,
+        saveYellow: (Int) -> Unit
+    ) {
+        row.findViewById<TextView>(R.id.tvThresholdLabel).text = label
 
-            val trips = db.tripDao().getToday(startOfDay)
-            adapter.submitList(trips)
+        val etGreen = row.findViewById<EditText>(R.id.etGreen)
+        val etYellow = row.findViewById<EditText>(R.id.etYellow)
 
-            val stats = db.tripDao().getStatsToday(startOfDay)
-            findViewById<TextView>(R.id.tvStatsCount).text = "${stats.count}"
-            findViewById<TextView>(R.id.tvStatsEarnings).text =
-                "$ ${String.format("%,.0f", stats.totalEarnings ?: 0.0)}"
-            findViewById<TextView>(R.id.tvStatsAvgKm).text =
-                "$ ${String.format("%,.0f", stats.avgPorKm ?: 0.0)}/km"
-        }
+        etGreen.setText(greenVal.toString())
+        etYellow.setText(yellowVal.toString())
+
+        etGreen.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                s?.toString()?.toIntOrNull()?.let { saveGreen(it) }
+            }
+        })
+
+        etYellow.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                s?.toString()?.toIntOrNull()?.let { saveYellow(it) }
+            }
+        })
     }
 }

@@ -23,3 +23,4 @@ Thumbs.db
 node_modules/
 web/.next/
 web/out/
+.vercel

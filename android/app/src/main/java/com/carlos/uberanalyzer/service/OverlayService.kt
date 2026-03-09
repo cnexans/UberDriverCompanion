@@ -14,6 +14,7 @@ import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.carlos.uberanalyzer.R
+import com.carlos.uberanalyzer.model.ThresholdPrefs
 import com.carlos.uberanalyzer.model.TripData
 
 class OverlayService : Service() {
@@ -25,6 +26,7 @@ class OverlayService : Service() {
 
     companion object {
         private var instance: OverlayService? = null
+        var onSyncRequested: (() -> Unit)? = null
 
         fun updateTrip(trip: TripData) {
             instance?.showTrip(trip)
@@ -86,6 +88,19 @@ class OverlayService : Service() {
 
         overlayView = LayoutInflater.from(this).inflate(R.layout.overlay_bubble, null)
 
+        // Sync button
+        overlayView?.findViewById<TextView>(R.id.btnSync)?.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> true
+                MotionEvent.ACTION_UP -> {
+                    v.performClick()
+                    onSyncRequested?.invoke()
+                    true
+                }
+                else -> true
+            }
+        }
+
         var initialX = 0
         var initialY = 0
         var initialTouchX = 0f
@@ -133,24 +148,24 @@ class OverlayService : Service() {
         overlayView?.let { view ->
             view.findViewById<TextView>(R.id.tvPrice)?.text = "$ ${formatNumber(trip.price)}"
 
+            val kmGreen = ThresholdPrefs.getKmGreen(this)
+            val kmYellow = ThresholdPrefs.getKmYellow(this)
             val tvPorKm = view.findViewById<TextView>(R.id.tvPorKm)
             tvPorKm?.text = "$/km: ${formatNumber(trip.pesosPorKm)}"
-            tvPorKm?.setTextColor(if (trip.pesosPorKm >= 300) Color.GREEN else Color.RED)
+            tvPorKm?.setTextColor(colorForValue(trip.pesosPorKm, kmGreen.toDouble(), kmYellow.toDouble()))
 
+            val horaGreen = ThresholdPrefs.getHoraGreen(this)
+            val horaYellow = ThresholdPrefs.getHoraYellow(this)
             val pesosPorHora = trip.pesosPorMin * 60
             val tvPorHora = view.findViewById<TextView>(R.id.tvPorHora)
             tvPorHora?.text = "$/h: ${formatNumber(pesosPorHora)}"
-            tvPorHora?.setTextColor(if (pesosPorHora >= 6000) Color.GREEN else Color.RED)
+            tvPorHora?.setTextColor(colorForValue(pesosPorHora, horaGreen.toDouble(), horaYellow.toDouble()))
 
+            val pctGreen = ThresholdPrefs.getPctGreen(this)
+            val pctYellow = ThresholdPrefs.getPctYellow(this)
             val tvRatio = view.findViewById<TextView>(R.id.tvRatio)
             tvRatio?.text = "Dist cobrada: ${String.format("%.0f", trip.pctDistancia)}%"
-            tvRatio?.setTextColor(
-                when {
-                    trip.pctDistancia >= 60.0 -> Color.GREEN
-                    trip.pctDistancia >= 40.0 -> Color.YELLOW
-                    else -> Color.RED
-                }
-            )
+            tvRatio?.setTextColor(colorForValue(trip.pctDistancia, pctGreen.toDouble(), pctYellow.toDouble()))
 
             view.findViewById<TextView>(R.id.tvType)?.text = "${trip.type} ${trip.subtype ?: ""}"
             view.findViewById<TextView>(R.id.tvPickup)?.text = "Recogida: ${trip.pickupMinutes}min (${trip.pickupKm}km)"
@@ -160,6 +175,14 @@ class OverlayService : Service() {
                 isExpanded = true
                 view.findViewById<LinearLayout>(R.id.contentLayout)?.visibility = View.VISIBLE
             }
+        }
+    }
+
+    private fun colorForValue(value: Double, green: Double, yellow: Double): Int {
+        return when {
+            value >= green -> Color.GREEN
+            value >= yellow -> Color.YELLOW
+            else -> Color.RED
         }
     }
 

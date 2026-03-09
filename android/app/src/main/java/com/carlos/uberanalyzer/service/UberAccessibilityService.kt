@@ -48,6 +48,12 @@ class UberAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         isServiceRunning = true
         Log.d(TAG, "AccessibilityService connected")
+
+        OverlayService.onSyncRequested = {
+            Log.d(TAG, "Manual sync requested")
+            lastScreenshotTime = 0L
+            takeScreenshotForOCR(emptyList())
+        }
     }
 
     private var lastScanTime = 0L
