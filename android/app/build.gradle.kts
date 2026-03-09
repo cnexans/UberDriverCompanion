@@ -29,9 +29,9 @@ android {
             val ksFile = file(project.findProperty("KEYSTORE_FILE") as String? ?: "../release.keystore")
             if (ksFile.exists()) {
                 storeFile = ksFile
-                storePassword = (project.findProperty("KEYSTORE_PASSWORD") as String?) ?: "panauber2026"
-                keyAlias = (project.findProperty("KEY_ALIAS") as String?) ?: "panauber"
-                keyPassword = (project.findProperty("KEY_PASSWORD") as String?) ?: "panauber2026"
+                storePassword = project.findProperty("KEYSTORE_PASSWORD") as String?
+                keyAlias = project.findProperty("KEY_ALIAS") as String?
+                keyPassword = project.findProperty("KEY_PASSWORD") as String?
             }
         }
     }

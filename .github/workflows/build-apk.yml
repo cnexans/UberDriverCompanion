@@ -30,7 +30,7 @@ jobs:
         id: version
         run: |
           VERSION_NAME="${GITHUB_REF_NAME#v}"
-          VERSION_CODE=$(git rev-list --count HEAD)
+          VERSION_CODE=$(( 30 + $(git rev-list --count HEAD) ))
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "VERSION_CODE=$VERSION_CODE" >> "$GITHUB_OUTPUT"
 
