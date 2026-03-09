@@ -75,6 +75,14 @@ class UberAccessibilityService : AccessibilityService() {
         if (event == null) return
 
         val pkg = event.packageName?.toString() ?: ""
+
+        // User left Uber → reset overlay to waiting state
+        if (pkg.isNotEmpty() && pkg != "com.ubercab.driver" && pkg != "com.ubercab" && isTripActive) {
+            isTripActive = false
+            lastTripKey = null
+            OverlayService.showWaiting()
+        }
+
         if (pkg == "com.ubercab.driver" || pkg == "com.ubercab") {
             // Collect text from event
             event.text?.forEach { cs ->
