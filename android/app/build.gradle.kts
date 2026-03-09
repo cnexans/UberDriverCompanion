@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.carlos.uberanalyzer"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.carlos.uberanalyzer"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
         versionName = (project.findProperty("versionName") as String?) ?: "1.0.0"
     }
