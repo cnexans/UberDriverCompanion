@@ -74,24 +74,17 @@ jobs:
             android/app/build/outputs/apk/release/panauber-v${{ steps.version.outputs.VERSION_NAME }}.apk
             android/app/build/outputs/bundle/release/panauber-v${{ steps.version.outputs.VERSION_NAME }}.aab
 
-      - name: Upload AAB to Google Play (Internal Testing)
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: com.carlos.uberanalyzer
-          releaseFiles: android/app/build/outputs/bundle/release/panauber-v${{ steps.version.outputs.VERSION_NAME }}.aab
-          track: internal
-          status: draft
-
-      - name: Promote to Closed Testing (alpha)
+      - name: Upload AAB to Google Play (Internal + Closed Testing)
         run: |
           echo '${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}' > /tmp/sa.json
           pip install google-auth google-api-python-client -q
-          python3 - <<'PYEOF'
-          import json
+          python3 - "${{ steps.version.outputs.VERSION_NAME }}" <<'PYEOF'
+          import sys, json
           from google.oauth2 import service_account
           from googleapiclient.discovery import build
+          from googleapiclient.http import MediaFileUpload
 
+          version_name = sys.argv[1]
           creds = service_account.Credentials.from_service_account_file(
               '/tmp/sa.json',
               scopes=['https://www.googleapis.com/auth/androidpublisher']
@@ -99,32 +92,38 @@ jobs:
           service = build('androidpublisher', 'v3', credentials=creds)
           pkg = 'com.carlos.uberanalyzer'
 
+          # Create a single edit
           edit = service.edits().insert(body={}, packageName=pkg).execute()
           edit_id = edit['id']
+          print(f'Created edit: {edit_id}')
 
-          # Get the latest internal release
-          internal = service.edits().tracks().get(
-              packageName=pkg, editId=edit_id, track='internal'
+          # Upload AAB
+          aab_path = f'android/app/build/outputs/bundle/release/panauber-v{version_name}.aab'
+          media = MediaFileUpload(aab_path, mimetype='application/octet-stream')
+          bundle = service.edits().bundles().upload(
+              packageName=pkg, editId=edit_id, media_body=media
           ).execute()
+          vc = bundle['versionCode']
+          print(f'Uploaded bundle with versionCode: {vc}')
 
-          releases = internal.get('releases', [])
-          if releases:
-              latest = releases[0]
-              version_codes = latest.get('versionCodes', [])
-              # Set same version codes on alpha track with draft status
-              service.edits().tracks().update(
-                  packageName=pkg, editId=edit_id, track='alpha',
-                  body={'track': 'alpha', 'releases': [{'versionCodes': version_codes, 'status': 'draft', 'name': f'v{version_codes[0]}'}]}
-              ).execute()
-              # Also ensure any existing alpha releases are set to draft
-              alpha_track = service.edits().tracks().get(
-                  packageName=pkg, editId=edit_id, track='alpha'
-              ).execute()
-              print(f'Alpha track before update: {json.dumps(alpha_track, indent=2)}')
+          release = {'name': version_name, 'versionCodes': [str(vc)], 'status': 'draft'}
 
-              service.edits().commit(packageName=pkg, editId=edit_id).execute()
-              print(f'Promoted version codes {version_codes} from internal to alpha')
-          else:
-              print('No internal releases found')
+          # Assign to internal track
+          service.edits().tracks().update(
+              packageName=pkg, editId=edit_id, track='internal',
+              body={'track': 'internal', 'releases': [release]}
+          ).execute()
+          print('Set internal track')
+
+          # Assign to alpha (closed testing) track
+          service.edits().tracks().update(
+              packageName=pkg, editId=edit_id, track='alpha',
+              body={'track': 'alpha', 'releases': [release]}
+          ).execute()
+          print('Set alpha track')
+
+          # Commit single edit
+          service.edits().commit(packageName=pkg, editId=edit_id).execute()
+          print(f'Committed edit - v{version_name} (vc={vc}) on internal + alpha')
           PYEOF
           rm -f /tmp/sa.json
