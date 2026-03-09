@@ -78,8 +78,20 @@ class UberAccessibilityService : AccessibilityService() {
     private fun startPolling() {
         pollingRunnable = object : Runnable {
             override fun run() {
-                if (isUberInForeground) {
+                // Always check if Uber is active — don't rely on event-based state
+                val isUberActive = try {
+                    val pkg = rootInActiveWindow?.packageName?.toString()
+                    pkg == "com.ubercab.driver" || pkg == "com.ubercab"
+                } catch (_: Exception) { false }
+
+                if (isUberActive) {
+                    isUberInForeground = true
                     scanAndProcess("POLL")
+                } else {
+                    if (isUberInForeground) {
+                        // Uber just left foreground
+                        isUberInForeground = false
+                    }
                 }
                 handler.postDelayed(this, POLL_INTERVAL_MS)
             }
