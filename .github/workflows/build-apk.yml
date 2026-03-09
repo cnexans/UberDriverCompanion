@@ -111,12 +111,12 @@ jobs:
           if releases:
               latest = releases[0]
               version_codes = latest.get('versionCodes', [])
-              # Set same version codes on alpha track
+              # Set same version codes on alpha track with draft status
               service.edits().tracks().update(
                   packageName=pkg, editId=edit_id, track='alpha',
-                  body={'track': 'alpha', 'releases': [{'versionCodes': version_codes, 'status': 'draft'}]}
+                  body={'track': 'alpha', 'releases': [{'versionCodes': version_codes, 'status': 'draft', 'name': f'v{version_codes[0]}'}]}
               ).execute()
-              service.edits().commit(packageName=pkg, editId=edit_id).execute()
+              service.edits().commit(packageName=pkg, editId=edit_id, changesNotSentForReview=True).execute()
               print(f'Promoted version codes {version_codes} from internal to alpha')
           else:
               print('No internal releases found')
