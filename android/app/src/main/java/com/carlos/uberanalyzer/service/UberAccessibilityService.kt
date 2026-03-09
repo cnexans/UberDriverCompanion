@@ -49,12 +49,16 @@ class UberAccessibilityService : AccessibilityService() {
         private const val MAX_RETRIES = 2               // Reduced from 3
         private const val SCREENSHOT_COOLDOWN_MS = 50L  // Reduced from 100ms
         private const val TRIP_GONE_TIMEOUT_MS = 3000L  // Reset to waiting after 3s
+        private const val POLL_INTERVAL_MS = 500L        // Poll every 500ms when Uber foreground
         // ROI: crop bottom portion of screen where trip card appears
         private const val ROI_TOP_RATIO = 0.45f         // Start at 45% from top
         private const val ROI_SCALE_FACTOR = 0.6f       // Scale down to 60% for faster OCR
         var isServiceRunning = false
             private set
     }
+
+    private var pollingRunnable: Runnable? = null
+    private var isUberInForeground = false
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -66,6 +70,21 @@ class UberAccessibilityService : AccessibilityService() {
             lastScreenshotTime = 0L
             takeScreenshotForOCR(emptyList())
         }
+
+        // Start polling loop — scans every 500ms when Uber is in foreground
+        startPolling()
+    }
+
+    private fun startPolling() {
+        pollingRunnable = object : Runnable {
+            override fun run() {
+                if (isUberInForeground) {
+                    scanAndProcess("POLL")
+                }
+                handler.postDelayed(this, POLL_INTERVAL_MS)
+            }
+        }
+        handler.postDelayed(pollingRunnable!!, POLL_INTERVAL_MS)
     }
 
     private var lastScanTime = 0L
@@ -162,6 +181,9 @@ class UberAccessibilityService : AccessibilityService() {
             }
             eventTexts.clear()
         }
+
+        // Update foreground state for polling
+        isUberInForeground = isUberForeground
 
         // Track normal text count to detect sudden drops
         if (isUberForeground && rootTextCount >= 10) {
@@ -260,9 +282,14 @@ class UberAccessibilityService : AccessibilityService() {
 
         if (texts.isEmpty()) return
 
-        // Filter out overlay texts
-        val overlayFilters = listOf("UBER ANALYZER", "UBER", "$/km:", "$/h:", "Dist cobrada:", "Ratio:", "Recogida:", "Esperando viaje")
-        val cleanTexts = texts.filter { text -> overlayFilters.none { text.contains(it) } }
+        // Filter out overlay texts (our own overlay)
+        val overlayFilters = listOf(
+            "UBER ANALYZER", "$/km:", "$/h:", "Dist cobrada:", "Ratio:",
+            "Recogida:", "Esperando viaje", "— UBER —"
+        )
+        val cleanTexts = texts.filter { text ->
+            overlayFilters.none { text.contains(it) } && text != "UBER"
+        }
 
         val hasPickupOrTrip = cleanTexts.any { it.contains("min (") && it.contains("km)") }
         if (hasPickupOrTrip) {
@@ -525,6 +552,7 @@ class UberAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         isServiceRunning = false
+        pollingRunnable?.let { handler.removeCallbacks(it) }
         super.onDestroy()
     }
 }
