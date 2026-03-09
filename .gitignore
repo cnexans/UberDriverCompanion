@@ -7,6 +7,10 @@ android/app/build/
 # Android local config
 local.properties
 
+# Keystore (secrets)
+*.keystore
+*.jks
+
 # IDE
 .idea/
 *.iml
