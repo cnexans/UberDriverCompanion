@@ -18,6 +18,8 @@ android {
         // Ads disabled by default (testing). Set -PSHOW_ADS=true for production builds.
         buildConfigField("boolean", "SHOW_ADS",
             (project.findProperty("SHOW_ADS") as String?) ?: "false")
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildFeatures {
@@ -81,4 +83,11 @@ dependencies {
 
     // Google Play Billing
     implementation("com.android.billingclient:billing-ktx:7.1.1")
+
+    // Unit tests
+    testImplementation("junit:junit:4.13.2")
+
+    // Instrumented tests
+    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation("androidx.test:runner:1.5.2")
 }
