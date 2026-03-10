@@ -7,11 +7,16 @@ import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
+import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.Spinner
+import android.widget.AdapterView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.carlos.uberanalyzer.billing.BillingManager
+import com.carlos.uberanalyzer.fuel.FuelPriceProvider
+import com.carlos.uberanalyzer.fuel.FuelType
 import com.carlos.uberanalyzer.model.ThresholdPrefs
 import com.carlos.uberanalyzer.service.OverlayService
 import com.carlos.uberanalyzer.service.UberAccessibilityService
@@ -117,6 +122,62 @@ class MainActivity : AppCompatActivity() {
             { ThresholdPrefs.setPctGreen(this, it) },
             { ThresholdPrefs.setPctYellow(this, it) }
         )
+
+        setupFuelSettings()
+    }
+
+    private fun setupFuelSettings() {
+        // Fuel type spinner
+        val spinner = findViewById<Spinner>(R.id.spinnerFuelType)
+        val fuelTypes = FuelType.values()
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, fuelTypes.map { it.displayName })
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinner.adapter = adapter
+
+        val currentType = FuelPriceProvider.getSelectedFuelType(this)
+        spinner.setSelection(fuelTypes.indexOf(currentType))
+
+        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, pos: Int, id: Long) {
+                FuelPriceProvider.setSelectedFuelType(this@MainActivity, fuelTypes[pos])
+                updateFuelPriceDisplay()
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+        // Consumption input
+        val etConsumption = findViewById<EditText>(R.id.etConsumption)
+        etConsumption.setText(FuelPriceProvider.getConsumption(this).toString())
+        etConsumption.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) {
+                s?.toString()?.toFloatOrNull()?.let {
+                    if (it > 0) FuelPriceProvider.setConsumption(this@MainActivity, it)
+                }
+            }
+        })
+
+        // Refresh button - scrapes surtidores.com.ar
+        findViewById<MaterialButton>(R.id.btnRefreshFuel).setOnClickListener {
+            lifecycleScope.launch {
+                it.isEnabled = false
+                (it as MaterialButton).text = "Actualizando..."
+                val success = FuelPriceProvider.refreshPrices(this@MainActivity)
+                it.text = if (success) "Actualizado!" else "Error - usando cache"
+                updateFuelPriceDisplay()
+                it.isEnabled = true
+            }
+        }
+
+        updateFuelPriceDisplay()
+    }
+
+    private fun updateFuelPriceDisplay() {
+        val tvPrice = findViewById<TextView>(R.id.tvCurrentFuelPrice)
+        val type = FuelPriceProvider.getSelectedFuelType(this)
+        val price = FuelPriceProvider.getCurrentPrice(this)
+        tvPrice.text = "Precio ${type.displayName}: \$${String.format("%,.0f", price)}/litro"
     }
 
     private fun updateAdVisibility(adFree: Boolean) {

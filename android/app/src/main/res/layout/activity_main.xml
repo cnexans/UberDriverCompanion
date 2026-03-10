@@ -110,6 +110,99 @@
 
         </LinearLayout>
 
+        <!-- Fuel Cost Settings -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Costo de nafta"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:paddingBottom="4dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Precios de surtidores.com.ar (YPF C.A.B.A)"
+                android:textColor="#888888"
+                android:textSize="12sp"
+                android:paddingBottom="12dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Tipo de nafta"
+                    android:textColor="#CCCCCC"
+                    android:textSize="14sp" />
+
+                <android.widget.Spinner
+                    android:id="@+id/spinnerFuelType"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:backgroundTint="#4CAF50" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Consumo (km/litro)"
+                    android:textColor="#CCCCCC"
+                    android:textSize="14sp" />
+
+                <EditText
+                    android:id="@+id/etConsumption"
+                    android:layout_width="80dp"
+                    android:layout_height="40dp"
+                    android:inputType="numberDecimal"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:gravity="center"
+                    android:background="@android:color/transparent"
+                    android:textColorHint="#666666"
+                    android:hint="10" />
+
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvCurrentFuelPrice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#FF9800"
+                android:textSize="13sp"
+                android:paddingBottom="8dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRefreshFuel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Actualizar precios"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
         <!-- Remove Ads button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnRemoveAds"

@@ -14,6 +14,7 @@ import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.carlos.uberanalyzer.R
+import com.carlos.uberanalyzer.fuel.FuelPriceProvider
 import com.carlos.uberanalyzer.model.ThresholdPrefs
 import com.carlos.uberanalyzer.model.TripData
 
@@ -162,6 +163,10 @@ class OverlayService : Service() {
                 text = ""
                 visibility = View.GONE
             }
+            view.findViewById<TextView>(R.id.tvFuelCost)?.apply {
+                text = ""
+                visibility = View.GONE
+            }
             view.findViewById<TextView>(R.id.tvPickup)?.apply {
                 text = ""
                 visibility = View.GONE
@@ -179,7 +184,7 @@ class OverlayService : Service() {
         }
         overlayView?.let { view ->
             // Restore visibility of all fields
-            listOf(R.id.tvPorKm, R.id.tvPorHora, R.id.tvRatio, R.id.tvPickup, R.id.tvTrip).forEach { id ->
+            listOf(R.id.tvPorKm, R.id.tvPorHora, R.id.tvRatio, R.id.tvFuelCost, R.id.tvPickup, R.id.tvTrip).forEach { id ->
                 view.findViewById<TextView>(id)?.visibility = View.VISIBLE
             }
 
@@ -206,6 +211,13 @@ class OverlayService : Service() {
             val tvRatio = view.findViewById<TextView>(R.id.tvRatio)
             tvRatio?.text = "Dist cobrada: ${String.format("%.0f", trip.pctDistancia)}%"
             tvRatio?.setTextColor(colorForValue(trip.pctDistancia, pctGreen.toDouble(), pctYellow.toDouble()))
+
+            // Fuel cost calculation (data from surtidores.com.ar)
+            val fuelCost = FuelPriceProvider.calculateFuelCost(this, trip.totalKm)
+            val netEarnings = trip.price - fuelCost
+            val tvFuelCost = view.findViewById<TextView>(R.id.tvFuelCost)
+            tvFuelCost?.text = "Nafta: -${formatNumber(fuelCost)} | Neto: ${formatNumber(netEarnings)}"
+            tvFuelCost?.setTextColor(if (netEarnings > 0) Color.parseColor("#FF9800") else Color.RED)
 
             view.findViewById<TextView>(R.id.tvType)?.text = "${trip.type} ${trip.subtype ?: ""}"
             view.findViewById<TextView>(R.id.tvPickup)?.text = "Recogida: ${trip.pickupMinutes}min (${trip.pickupKm}km)"
