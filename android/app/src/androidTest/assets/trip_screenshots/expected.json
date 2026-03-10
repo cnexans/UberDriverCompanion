@@ -216,5 +216,8 @@
     "pickupKm": 0.0,
     "tripMinutes": 19,
     "tripKm": 6.9
+  },
+  "28_trip_in_progress_navigation.jpeg": {
+    "tripInProgress": true
   }
 }

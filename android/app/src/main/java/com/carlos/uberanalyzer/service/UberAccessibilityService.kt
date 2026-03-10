@@ -36,6 +36,7 @@ class UberAccessibilityService : AccessibilityService() {
     private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.Builder().build())
 
     private var isTripActive = false
+    private var isTripInProgress = false
     private var tripGoneTime = 0L
     private var isProcessing = false
 
@@ -47,6 +48,12 @@ class UberAccessibilityService : AccessibilityService() {
         private const val ROI_SCALE_FACTOR = 0.6f
         var isServiceRunning = false
             private set
+
+        // Patterns that indicate an accepted trip (navigation to passenger/destination)
+        private val TRIP_IN_PROGRESS_PATTERNS = listOf(
+            "Llegar por", "Recoger", "Dejando", "Llegando",
+            "Iniciar viaje", "Finalizar viaje", "Cancelar viaje"
+        )
     }
 
     private var pollingRunnable: Runnable? = null
@@ -158,6 +165,21 @@ class UberAccessibilityService : AccessibilityService() {
             return
         }
 
+        // Detect trip in progress (driver navigating to passenger or destination)
+        val tripInProgress = filteredTexts.any { text ->
+            TRIP_IN_PROGRESS_PATTERNS.any { text.contains(it) }
+        }
+        if (tripInProgress) {
+            if (!isTripInProgress) {
+                Log.d(TAG, "Trip in progress detected — minimizing overlay")
+                isTripInProgress = true
+            }
+            isTripActive = false
+            tripGoneTime = 0L
+            OverlayService.minimize()
+            return
+        }
+
         val trip = TripParser.parse(filteredTexts)
         if (trip == null) {
             handleNoTrip()
@@ -166,8 +188,9 @@ class UberAccessibilityService : AccessibilityService() {
 
         Log.d(TAG, "TRIP: ${trip.type} $${trip.price} $/km=${trip.pesosPorKm}")
 
-        // Reset gone timer — trip is visible
+        // Reset state — new trip offer visible
         isTripActive = true
+        isTripInProgress = false
         tripGoneTime = 0L
 
         if (trip.tripKey == lastTripKey) return
@@ -184,6 +207,7 @@ class UberAccessibilityService : AccessibilityService() {
             tripGoneTime = now
         } else if (now - tripGoneTime > TRIP_GONE_TIMEOUT_MS) {
             isTripActive = false
+            isTripInProgress = false
             lastTripKey = null
             OverlayService.showWaiting()
         }
