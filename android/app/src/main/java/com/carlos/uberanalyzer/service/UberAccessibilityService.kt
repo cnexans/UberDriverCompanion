@@ -67,7 +67,7 @@ class UberAccessibilityService : AccessibilityService() {
     private fun startPolling() {
         pollingRunnable = object : Runnable {
             override fun run() {
-                if (!isProcessing) {
+                if (!isProcessing && OverlayService.isRunning()) {
                     takeScreenshotAndProcess()
                 }
                 handler.postDelayed(this, POLL_INTERVAL_MS)
