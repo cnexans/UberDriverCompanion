@@ -38,6 +38,10 @@ class OverlayService : Service() {
             instance?.showWaitingState()
         }
 
+        fun minimize() {
+            instance?.minimizeOverlay()
+        }
+
         fun hide() {
             instance?.let { svc ->
                 svc.layoutParams?.let { params ->
@@ -143,6 +147,13 @@ class OverlayService : Service() {
         }
 
         windowManager?.addView(overlayView, params)
+    }
+
+    private fun minimizeOverlay() {
+        if (isExpanded) {
+            isExpanded = false
+            overlayView?.findViewById<LinearLayout>(R.id.contentLayout)?.visibility = View.GONE
+        }
     }
 
     private fun showWaitingState() {

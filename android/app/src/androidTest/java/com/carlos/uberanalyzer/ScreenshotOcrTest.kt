@@ -57,6 +57,12 @@ class ScreenshotOcrTest {
         private const val SCREENSHOTS_DIR = "trip_screenshots"
         private const val ROI_TOP_RATIO = 0.45f
         private const val ROI_SCALE_FACTOR = 0.6f
+
+        // Same patterns as UberAccessibilityService
+        private val TRIP_IN_PROGRESS_PATTERNS = listOf(
+            "Llegar por", "Recoger", "Dejando", "Llegando",
+            "Iniciar viaje", "Finalizar viaje", "Cancelar viaje"
+        )
     }
 
     private val textRecognizer = TextRecognition.getClient(TextRecognizerOptions.Builder().build())
@@ -97,11 +103,16 @@ class ScreenshotOcrTest {
             val ocrTexts = runOcr(bitmap!!)
             val filteredTexts = filterOverlayTexts(ocrTexts)
             val trip = TripParser.parse(filteredTexts)
+            val detectedInProgress = filteredTexts.any { text ->
+                TRIP_IN_PROGRESS_PATTERNS.any { text.contains(it) }
+            }
 
             Log.d(TAG, "OCR raw [${ocrTexts.size}]: $ocrTexts")
             Log.d(TAG, "OCR filtered [${filteredTexts.size}]: $filteredTexts")
 
-            if (trip != null) {
+            if (detectedInProgress) {
+                Log.d(TAG, "DETECTED: trip in progress (navigation screen)")
+            } else if (trip != null) {
                 Log.d(TAG, "PARSED: type=${trip.type} price=${trip.price} " +
                     "pickup=${trip.pickupMinutes}m/${trip.pickupKm}km " +
                     "trip=${trip.tripMinutes}m/${trip.tripKm}km " +
@@ -112,7 +123,7 @@ class ScreenshotOcrTest {
             }
 
             val exp = expected?.get(filename)
-            results.add(TestResult(filename, ocrTexts, filteredTexts, trip, exp))
+            results.add(TestResult(filename, ocrTexts, filteredTexts, trip, detectedInProgress, exp))
 
             bitmap.recycle()
         }
@@ -249,11 +260,21 @@ class ScreenshotOcrTest {
         val ocrTexts: List<String>,
         val filteredTexts: List<String>,
         val trip: com.carlos.uberanalyzer.model.TripData?,
+        val detectedInProgress: Boolean,
         val expected: Map<String, Any>?
     ) {
         fun validate(): List<String> {
             if (expected == null) return emptyList()
             val errors = mutableListOf<String>()
+
+            // Validate trip-in-progress detection
+            val expectInProgress = expected["tripInProgress"] == true
+            if (expectInProgress) {
+                if (!detectedInProgress) {
+                    errors.add("Expected tripInProgress but not detected in OCR texts")
+                }
+                return errors
+            }
 
             if (trip == null) {
                 errors.add("Expected trip but got null")
