@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Uber Analyzer</string>
-    <string name="accessibility_service_description">Lee la pantalla de Uber Driver para analizar viajes y mostrar metricas en tiempo real.</string>
+    <string name="app_name">Trip Analyzer</string>
+    <string name="accessibility_service_description">Lee la pantalla de apps de transporte (Uber, Didi) para analizar viajes y mostrar metricas en tiempo real.</string>
 </resources>

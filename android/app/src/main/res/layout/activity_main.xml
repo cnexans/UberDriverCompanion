@@ -20,7 +20,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Uber Analyzer"
+                android:text="Trip Analyzer"
                 android:textSize="24sp"
                 android:textStyle="bold"
                 android:textColor="#4CAF50" />
@@ -33,6 +33,32 @@
                 android:textColor="#FF5252"
                 android:textSize="14sp"
                 android:paddingTop="4dp" />
+
+            <!-- App selector -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="12dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="App:"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:paddingEnd="8dp" />
+
+                <Spinner
+                    android:id="@+id/spinnerApp"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:backgroundTint="#FFFFFF"
+                    android:popupBackground="#333333" />
+
+            </LinearLayout>
 
             <!-- Permission buttons -->
             <LinearLayout

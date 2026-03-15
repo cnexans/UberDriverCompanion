@@ -16,7 +16,10 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.carlos.uberanalyzer.db.TripDatabase
 import com.carlos.uberanalyzer.db.TripEntity
+import com.carlos.uberanalyzer.model.AppPrefs
+import com.carlos.uberanalyzer.model.DriverApp
 import com.carlos.uberanalyzer.model.TripData
+import com.carlos.uberanalyzer.parser.DidiTripParser
 import com.carlos.uberanalyzer.parser.TripParser
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
@@ -147,10 +150,10 @@ class UberAccessibilityService : AccessibilityService() {
     private fun processOcrResults(ocrTexts: List<String>) {
         val overlayPatterns = listOf(
             "UBER ANALYZER", "$/km:", "$/min:", "$/h:", "Dist cobrada:", "Ratio:",
-            "Recogida:", "Esperando viaje", "— UBER —"
+            "Recogida:", "Esperando viaje", "— UBER —", "— DIDI —"
         )
         val filteredTexts = ocrTexts.filter { text ->
-            overlayPatterns.none { text.contains(it) } && text != "UBER"
+            overlayPatterns.none { text.contains(it) } && text != "UBER" && text != "DIDI"
         }
 
         if (filteredTexts.isEmpty()) {
@@ -158,7 +161,11 @@ class UberAccessibilityService : AccessibilityService() {
             return
         }
 
-        val trip = TripParser.parse(filteredTexts)
+        val selectedApp = AppPrefs.getSelectedApp(this)
+        val trip = when (selectedApp) {
+            DriverApp.DIDI -> DidiTripParser.parse(filteredTexts)
+            DriverApp.UBER -> TripParser.parse(filteredTexts)
+        }
         if (trip == null) {
             handleNoTrip()
             return

@@ -14,6 +14,7 @@ import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
 import com.carlos.uberanalyzer.R
+import com.carlos.uberanalyzer.model.AppPrefs
 import com.carlos.uberanalyzer.model.ThresholdPrefs
 import com.carlos.uberanalyzer.model.TripData
 
@@ -143,6 +144,12 @@ class OverlayService : Service() {
         }
 
         windowManager?.addView(overlayView, params)
+        updateTitle()
+    }
+
+    private fun updateTitle() {
+        val appName = AppPrefs.getSelectedApp(this).displayName.uppercase()
+        overlayView?.findViewById<TextView>(R.id.tvTitle)?.text = "\u25AC $appName \u25AC"
     }
 
     private fun showWaitingState() {
@@ -178,6 +185,7 @@ class OverlayService : Service() {
             createOverlay()
         }
         overlayView?.let { view ->
+            updateTitle()
             // Restore visibility of all fields
             listOf(R.id.tvPorKm, R.id.tvPorHora, R.id.tvRatio, R.id.tvPickup, R.id.tvTrip).forEach { id ->
                 view.findViewById<TextView>(id)?.visibility = View.VISIBLE

@@ -7,11 +7,16 @@ import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.EditText
+import android.widget.Spinner
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.carlos.uberanalyzer.billing.BillingManager
+import com.carlos.uberanalyzer.model.AppPrefs
+import com.carlos.uberanalyzer.model.DriverApp
 import com.carlos.uberanalyzer.model.ThresholdPrefs
 import com.carlos.uberanalyzer.service.OverlayService
 import com.carlos.uberanalyzer.service.UberAccessibilityService
@@ -56,6 +61,20 @@ class MainActivity : AppCompatActivity() {
             // Testing builds: no ads, no billing
             adView?.visibility = View.GONE
             findViewById<MaterialButton>(R.id.btnRemoveAds).visibility = View.GONE
+        }
+
+        // App selector
+        val spinnerApp = findViewById<Spinner>(R.id.spinnerApp)
+        val apps = DriverApp.entries.map { it.displayName }
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, apps)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spinnerApp.adapter = adapter
+        spinnerApp.setSelection(AppPrefs.getSelectedApp(this).ordinal)
+        spinnerApp.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                AppPrefs.setSelectedApp(this@MainActivity, DriverApp.entries[position])
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
         // Permission buttons
